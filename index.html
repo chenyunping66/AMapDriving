@@ -1,0 +1,119 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="ie=edge">
+<title>JS高德地图模拟驾车路线规划绘制代码</title>
+<!-- //https://lbs.amap.com/api/javascript-api/guide/abc/plugins -->
+<style>
+    #container{
+      width: 1000px;
+      height: 600px;
+    }
+</style>
+<script>
+    // 扩大作用域
+    var map = null;
+    var timer = null;
+    var markerList = null;
+    var index = 0;
+
+    // 异步加载地图策略
+    var initMap = function () {
+      // 初始化地图
+      map = new AMap.Map("container", {
+        center: [115.379028, 39.865042],
+        zoom: 18,
+        viewMode: "3D",
+        pitch: 75
+      })
+
+      // 异步加载插件，此时不需要在JS文件后边引入对应的插件，因为现在是异步加载的。
+      AMap.plugin("AMap.Driving", function () {
+        // 实例化对象
+        var driving = new AMap.Driving({  ////驾车路线规划
+          // 驾车路线规划策略，LEAST_TIME为最快捷模式。
+          policy: AMap.DrivingPolicy.LEAST_FEE,
+          map: map
+        });
+
+        // 起始和结束坐标位置
+        var startLngLat = [115.379028, 39.865042];
+        var endLngLat = [116.427281, 39.903719];
+
+        // 开始规划
+        driving.search(startLngLat, endLngLat, function (status, result) {
+          console.log(status);
+          console.log(result);
+          if (result.info === "OK") {
+            console.log(result.routes[0].steps);
+            alert("全程大约：" + (parseFloat(result.routes[0].distance) / 1000) + "公里，确认3秒后开始模拟车辆行车轨迹。");
+            markerList = GetMarkers(result);
+            console.log(markerList,'=================');
+            // 3秒后开始模拟车辆行车轨迹
+            window.setTimeout('map.setZoom(16);timer = window.setInterval("AddMarkerToMap(markerList[index++])", 50);', 3000);
+          } else {
+            alert("对不起，系统出现了问题");
+          }
+        });
+      });
+    }
+
+    // 定时函数
+    var marker = null;
+    function AddMarkerToMap(markerObj) {
+      if (markerObj == undefined) {
+        // 清除定时函数
+        window.clearInterval(timer);
+        return false;
+      }
+      // 清除之前的maker
+      if (marker != null) {
+        map.remove(marker);
+      }
+      // 暂存
+      marker = markerObj;
+      // 设置地图中心为当前的marker坐标
+      map.setCenter(markerObj.getPosition());
+      // 添加maker
+      map.add(markerObj);
+    }
+
+
+    // 获取路线所有的markers对象
+    function GetMarkers(result) {
+      var markerList = [];
+      // 获取路线各个子路段对象
+      var steps = result.routes[0].steps;
+      console.log("规划路线子路段个数：" + steps.length);
+      for (i = 0; i < steps.length; i++) {
+        console.log(steps[i])
+        // 获取子路段的坐标集合
+        var stepPath = steps[i].path;
+        console.log("子路段坐标集合个数：" + stepPath.length);
+        for (j = 0; j < stepPath.length; j++) {
+          var lng = stepPath[j].lng;
+          var lat = stepPath[j].lat;
+          var marker = new AMap.Marker({
+            position: [lng, lat],
+            icon: "images/car2.png"
+          });
+          // console.log(marker);
+          markerList.push(marker);
+          console.log(markerList);
+        }
+      }
+      return markerList;
+    }
+
+</script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.15&key=3f785a87d7b78a7690197fbd4b5a3aad&callback=initMap"></script>
+
+</head>
+<body>
+
+<div id="container"></div>
+
+</body>
+</html>
